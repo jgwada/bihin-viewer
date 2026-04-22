@@ -1842,6 +1842,16 @@ function renderTable() {
   for (const i of its) {
     h += `<td><span class="qty ${i.stock > 0 ? 'q-hi' : 'q-zero'}">${i.stock || '-'}</span></td>`;
   }
+  h += `</tr>`;
+  // Total needed row
+  h += `<tr style="border-top:2px solid var(--accent);background:rgba(56,189,248,0.08)"><td class="loc-name" style="color:var(--accent);font-size:0.9rem">必要数 合計</td>`;
+  for (const i of its) {
+    let total = 0;
+    for (const loc of allData.locations) {
+      total += loc.quantities[i.name] || 0;
+    }
+    h += `<td><span class="qty" style="font-weight:700;color:var(--accent)">${total || '-'}</span></td>`;
+  }
   h += `</tr></tbody></table></div>`;
   document.getElementById('content').innerHTML = h;
 }
