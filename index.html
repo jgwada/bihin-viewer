@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>備品管理ビューア - ロズウェル</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #334155;
+      --border: #475569;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent2: #818cf8;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --orange: #fb923c;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-content {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .controls {
+      max-width: 1600px;
+      margin: 1.5rem auto;
+      padding: 0 2rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-box {
+      flex: 1; min-width: 200px; max-width: 400px;
+      position: relative;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 0.6rem 1rem 0.6rem 2.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+    .search-box::before {
+      content: "\1F50D";
+      position: absolute; left: 0.8rem; top: 50%;
+      transform: translateY(-50%); font-size: 0.9rem;
+    }
+    .view-toggle {
+      display: flex;
+      background: var(--surface);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .view-toggle button {
+      padding: 0.6rem 1.2rem;
+      background: none; border: none;
+      color: var(--text-muted);
+      cursor: pointer; font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .view-toggle button.active {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+    }
+    .filter-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .chip {
+      padding: 0.4rem 0.8rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover, .chip.active {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+    .main {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 0 2rem 3rem;
+    }
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      transition: transform 0.2s;
+    }
+    .summary-card:hover { transform: translateY(-2px); }
+    .summary-card .label {
+      font-size: 0.75rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;
+    }
+    .summary-card .value { font-size: 1.8rem; font-weight: 700; }
+    .summary-card .sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; }
+    .summary-card.danger .value { color: var(--red); }
+    .summary-card.ok .value { color: var(--green); }
+    .summary-card.info .value { color: var(--accent); }
+    /* Table */
+    .table-container {
+      overflow: auto;
+      max-height: calc(100vh - 200px);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    thead th {
+      background: var(--surface2);
+      padding: 0.8rem 0.6rem;
+      text-align: center;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+      position: sticky; top: 0; z-index: 3;
+      white-space: nowrap;
+      font-size: 0.75rem;
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(71,85,105,0.3);
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: rgba(56,189,248,0.05); }
+    td { padding: 0.5rem 0.6rem; text-align: center; white-space: nowrap; }
+    td.loc-name {
+      font-weight: 600; color: var(--accent);
+      position: sticky; left: 0;
+      background: var(--surface);
+      z-index: 1; text-align: left;
+      min-width: 140px;
+      max-width: 200px;
+      white-space: normal;
+      word-break: break-all;
+    }
+    tbody tr:hover td.loc-name { background: #1a2d44; }
+    .qty { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600; min-width: 2rem; }
+    .q-neg { background: rgba(248,113,113,0.2); color: var(--red); font-weight: 700; }
+    .q-low { background: rgba(248,113,113,0.15); color: var(--red); }
+    .q-mid { background: rgba(251,191,36,0.15); color: var(--yellow); }
+    .q-hi  { background: rgba(74,222,128,0.15); color: var(--green); }
+    .q-zero { color: var(--text-muted); }
+    /* Cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.2rem;
+    }
+    .loc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .loc-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+    .loc-card-head {
+      padding: 1rem 1.2rem;
+      background: linear-gradient(135deg, var(--surface2), var(--surface));
+      border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .loc-card-head h3 { font-size: 1rem; color: var(--accent); }
+    .loc-card-head .cnt {
+      font-size: 0.75rem;
+      background: rgba(56,189,248,0.15);
+      color: var(--accent);
+      padding: 0.2rem 0.6rem;
+      border-radius: 10px;
+    }
+    .loc-card-body { padding: 1rem 1.2rem; }
+    .item-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid rgba(71,85,105,0.2);
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-name { font-size: 0.85rem; }
+    .item-qty { font-size: 0.85rem; font-weight: 600; }
+    /* Reserve */
+    .reserve-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.8rem;
+    }
+    .reserve-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .reserve-item.neg { border-left: 3px solid var(--red); }
+    .reserve-item.pos { border-left: 3px solid var(--green); }
+    .reserve-item .rname { font-size: 0.85rem; }
+    .reserve-item .rsub { font-size: 0.75rem; color: var(--text-muted); }
+    .reserve-item .rqty { font-weight: 700; font-size: 0.95rem; }
+    .section-title {
+      font-size: 1.1rem; font-weight: 700;
+      margin: 1.5rem 0 1rem;
+    }
+    .refresh-btn {
+      padding: 0.6rem 1.2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      cursor: pointer; font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .footer {
+      text-align: center; padding: 2rem;
+      color: var(--text-muted); font-size: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--accent); text-decoration: none; }
+    @media (max-width: 768px) {
+      .header { padding: 1rem; }
+      .controls { padding: 0 1rem; }
+      .main { padding: 0 1rem 2rem; }
+      .card-grid { grid-template-columns: 1fr; }
+      .summary-cards { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="header-content">
+    <h1>備品管理ビューア - ロズウェル</h1>
+    <div class="header-meta">
+      <span><span class="status-dot"></span>データ読込済</span>
+      <span id="lastUpdate"></span>
+      <a class="refresh-btn" href="https://docs.google.com/spreadsheets/d/1x2qtm4TFsqRlANEfCnyf-GomoYMUdwe8v6UIgfwN9Q0/edit" target="_blank">&#x21BB; スプレッドシートを開く</a>
+    </div>
+  </div>
+</div>
+<div class="controls">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="備品名・場所を検索...">
+  </div>
+  <div class="view-toggle">
+    <button class="active" data-view="table" onclick="switchView('table')">テーブル</button>
+    <button data-view="cards" onclick="switchView('cards')">カード</button>
+    <button data-view="reserve" onclick="switchView('reserve')">予備状況</button>
+  </div>
+  <div class="filter-chips" id="filterChips"></div>
+</div>
+<div class="main">
+  <div class="summary-cards" id="summaryCards"></div>
+  <div id="content"></div>
+</div>
+<div class="footer">
+  <p>データソース: <a href="https://docs.google.com/spreadsheets/d/1x2qtm4TFsqRlANEfCnyf-GomoYMUdwe8v6UIgfwN9Q0/edit" target="_blank">Google スプレッドシート</a></p>
+</div>
+
+<script>
+const DATA = {
+  "items": [
+    {
+      "col": 1,
+      "name": "長テーブル (べニア600)",
+      "category": "ロズウェル",
+      "unit": "本",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 2,
+      "name": "長テーブル (べニア450)",
+      "category": "ロズウェル",
+      "unit": "本",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 3,
+      "name": "長テーブル (デコラ450)",
+      "category": "ロズウェル",
+      "unit": "本",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 4,
+      "name": "パイプ椅子",
+      "category": "ロズウェル",
+      "unit": "脚",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 5,
+      "name": "長椅子３人掛け",
+      "category": "ロズウェル",
+      "unit": "脚",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 6,
+      "name": "テント (2間×3間)",
+      "category": "ロズウェル",
+      "unit": "張",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 7,
+      "name": "テント (2間×2間)",
+      "category": "ロズウェル",
+      "unit": "張",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 8,
+      "name": "看板 (Ａ型)",
+      "category": "ロズウェル",
+      "unit": "個",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 9,
+      "name": "看板 (600角)",
+      "category": "ロズウェル",
+      "unit": "個",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 10,
+      "name": "看板 (600角 裏表)",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 11,
+      "name": "看板 (ターポリン 看板)",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 12,
+      "name": "看板 (ウッドラック 1800×900)",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 13,
+      "name": "看板 (ビスパネル 5400×900)",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 14,
+      "name": "看板 (ウッドラック 5400×1200)",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 15,
+      "name": "おもり (600角用)",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 16,
+      "name": "平台",
+      "category": "ロズウェル",
+      "unit": "箇所",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 17,
+      "name": "カーペット ワインレッド NJ-34",
+      "category": "ロズウェル",
+      "unit": "箇所",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 18,
+      "name": "拡声器",
+      "category": "ロズウェル",
+      "unit": "個",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 19,
+      "name": "仮設トイレ （男1/3or1/4）",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 20,
+      "name": "バルーンライト",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 21,
+      "name": "スポットクーラー",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 22,
+      "name": "扇風機",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 23,
+      "name": "コーンウェイト",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 24,
+      "name": "コーン",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 25,
+      "name": "バー",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 26,
+      "name": "反射板",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 27,
+      "name": "消火器",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 28,
+      "name": "インカム",
+      "category": "ロズウェル",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 29,
+      "name": "運営Tシャツ",
+      "category": "制作本部備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 30,
+      "name": "ボランティア Tシャツ",
+      "category": "制作本部備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 31,
+      "name": "メモ",
+      "category": "制作本部備品",
+      "unit": "",
+      "stock": 10,
+      "reserve": -18
+    },
+    {
+      "col": 32,
+      "name": "ボールペン",
+      "category": "制作本部備品",
+      "unit": "",
+      "stock": 30,
+      "reserve": -6
+    },
+    {
+      "col": 33,
+      "name": "油性マジック 大・小（黒）",
+      "category": "制作本部備品",
+      "unit": "",
+      "stock": 10,
+      "reserve": 2
+    },
+    {
+      "col": 34,
+      "name": "油性マジック 大・小（赤）",
+      "category": "制作本部備品",
+      "unit": "",
+      "stock": 10,
+      "reserve": 2
+    },
+    {
+      "col": 35,
+      "name": "布ガムテープ",
+      "category": "制作本部備品",
+      "unit": "個",
+      "stock": 20,
+      "reserve": 4
+    },
+    {
+      "col": 36,
+      "name": "養生テープ",
+      "category": "制作本部備品",
+      "unit": "個",
+      "stock": 30,
+      "reserve": -10
+    },
+    {
+      "col": 37,
+      "name": "ウェットティッシュ",
+      "category": "制作本部備品",
+      "unit": "個",
+      "stock": 15,
+      "reserve": 1
+    },
+    {
+      "col": 38,
+      "name": "ティッシュ",
+      "category": "制作本部備品",
+      "unit": "個",
+      "stock": 20,
+      "reserve": 5
+    },
+    {
+      "col": 39,
+      "name": "アルコール消毒 (手用)",
+      "category": "制作本部備品",
+      "unit": "個",
+      "stock": 15,
+      "reserve": -3
+    },
+    {
+      "col": 40,
+      "name": "雑巾",
+      "category": "制作本部備品",
+      "unit": "枚",
+      "stock": 100,
+      "reserve": -3
+    },
+    {
+      "col": 41,
+      "name": "タオル",
+      "category": "制作本部備品",
+      "unit": "枚",
+      "stock": 100,
+      "reserve": -20
+    },
+    {
+      "col": 42,
+      "name": "軍手",
+      "category": "制作本部備品",
+      "unit": "セット",
+      "stock": 100,
+      "reserve": -9
+    },
+    {
+      "col": 43,
+      "name": "ニトリル手袋 (設営とか用)",
+      "category": "制作本部備品",
+      "unit": "セット",
+      "stock": 12,
+      "reserve": 0
+    },
+    {
+      "col": 44,
+      "name": "ニトリル手袋 (使い捨て)",
+      "category": "制作本部備品",
+      "unit": "セット",
+      "stock": 300,
+      "reserve": 0
+    },
+    {
+      "col": 45,
+      "name": "延長コード",
+      "category": "制作本部備品",
+      "unit": "本",
+      "stock": 6,
+      "reserve": 0
+    },
+    {
+      "col": 46,
+      "name": "警備棒 (念のため)",
+      "category": "制作本部備品",
+      "unit": "本",
+      "stock": 3,
+      "reserve": 0
+    },
+    {
+      "col": 47,
+      "name": "巻尺",
+      "category": "制作本部備品",
+      "unit": "個",
+      "stock": 2,
+      "reserve": 0
+    },
+    {
+      "col": 48,
+      "name": "出店場所 Ａ４ (出店番号 屋号を記載)",
+      "category": "制作本部備品",
+      "unit": "枚",
+      "stock": 0,
+      "reserve": -31
+    },
+    {
+      "col": 49,
+      "name": "関係者パス",
+      "category": "制作本部備品",
+      "unit": "個",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 50,
+      "name": "救護セット",
+      "category": "救護・授乳室・おむつ",
+      "unit": "セット",
+      "stock": 1,
+      "reserve": 0
+    },
+    {
+      "col": 52,
+      "name": "芳香剤",
+      "category": "トイレ備品",
+      "unit": "個",
+      "stock": 10,
+      "reserve": 0
+    },
+    {
+      "col": 53,
+      "name": "泡ハンドソープ",
+      "category": "トイレ備品",
+      "unit": "個",
+      "stock": 7,
+      "reserve": 0
+    },
+    {
+      "col": 54,
+      "name": "トイレットペーパー",
+      "category": "トイレ備品",
+      "unit": "ロール",
+      "stock": 72,
+      "reserve": 0
+    },
+    {
+      "col": 55,
+      "name": "サニタリーゴミ箱",
+      "category": "トイレ備品",
+      "unit": "枚",
+      "stock": 4,
+      "reserve": 0
+    },
+    {
+      "col": 56,
+      "name": "サニタリーゴミ袋",
+      "category": "トイレ備品",
+      "unit": "枚",
+      "stock": 100,
+      "reserve": 0
+    },
+    {
+      "col": 57,
+      "name": "男女POP (1/4が男性)",
+      "category": "トイレ備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 58,
+      "name": "トイレブラシ (清掃業者確認)",
+      "category": "トイレ備品",
+      "unit": "個",
+      "stock": 3,
+      "reserve": 0
+    },
+    {
+      "col": 59,
+      "name": "スッポン (清掃業者確認)",
+      "category": "トイレ備品",
+      "unit": "本",
+      "stock": 2,
+      "reserve": 0
+    },
+    {
+      "col": 60,
+      "name": "デッキブラシ (清掃業者確認)",
+      "category": "トイレ備品",
+      "unit": "本",
+      "stock": 2,
+      "reserve": 0
+    },
+    {
+      "col": 61,
+      "name": "ゴミ運搬台車 (清掃業者確認)",
+      "category": "トイレ備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 62,
+      "name": "ゴミキャリー (清掃業者確認)",
+      "category": "トイレ備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 63,
+      "name": "清掃用トング (清掃業者確認)",
+      "category": "トイレ備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 64,
+      "name": "ゴミ箱 (可燃／プラスチック ペットボトル)",
+      "category": "ゴミステーション",
+      "unit": "個",
+      "stock": 25,
+      "reserve": -1
+    },
+    {
+      "col": 65,
+      "name": "汁物バケツ",
+      "category": "ゴミステーション",
+      "unit": "個",
+      "stock": 3,
+      "reserve": 0
+    },
+    {
+      "col": 66,
+      "name": "汁物ざる",
+      "category": "ゴミステーション",
+      "unit": "個",
+      "stock": 3,
+      "reserve": 0
+    },
+    {
+      "col": 67,
+      "name": "45Lゴミ袋",
+      "category": "ゴミステーション",
+      "unit": "枚",
+      "stock": 1000,
+      "reserve": 0
+    },
+    {
+      "col": 68,
+      "name": "90Lゴミ袋",
+      "category": "ゴミステーション",
+      "unit": "枚",
+      "stock": 700,
+      "reserve": 36
+    },
+    {
+      "col": 69,
+      "name": "当日券",
+      "category": "当日券販売所",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 70,
+      "name": "当日券販売用 お釣り",
+      "category": "当日券販売所",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 71,
+      "name": "当日券販売用 領収証",
+      "category": "当日券販売所",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 72,
+      "name": "お釣り用ポーチ",
+      "category": "当日券販売所",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 73,
+      "name": "小銭ケース",
+      "category": "当日券販売所",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0
+    },
+    {
+      "col": 74,
+      "name": "スマホ端末 (YMITダンスの2台をシャトルバスにも使用)",
+      "category": "その他備品",
+      "unit": "台",
+      "stock": 0,
+      "reserve": -6,
+      "needed": 0
+    },
+    {
+      "col": 75,
+      "name": "簡易ベッド",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 2
+    },
+    {
+      "col": 76,
+      "name": "車椅子",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 77,
+      "name": "担架",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 78,
+      "name": "ベビーベッド",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 79,
+      "name": "ウォーターサーバー",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 80,
+      "name": "ガス",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 81,
+      "name": "ステーキ鉄板 （ヘラ付き）",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 6
+    },
+    {
+      "col": 82,
+      "name": "氷",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 2
+    },
+    {
+      "col": 83,
+      "name": "サーバー",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 1
+    },
+    {
+      "col": 84,
+      "name": "VIPドリンク類",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 1
+    },
+    {
+      "col": 85,
+      "name": "ステーキ肉 ヒレ",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 1
+    },
+    {
+      "col": 86,
+      "name": "ステーキ肉 サーロイン",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 1
+    },
+    {
+      "col": 87,
+      "name": "VIP弁当",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 3
+    },
+    {
+      "col": 88,
+      "name": "VIP椅子",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 3
+    },
+    {
+      "col": 89,
+      "name": "VIP机",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 90,
+      "name": "PRM椅子",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 4
+    },
+    {
+      "col": 91,
+      "name": "PRM机",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 92,
+      "name": "アルミ立て看板",
+      "category": "その他備品",
+      "unit": "",
+      "stock": 0,
+      "reserve": 0,
+      "needed": 0
+    },
+    {
+      "col": 93,
+      "name": "チケット半券用 BOX (受付用)",
+      "category": "肉調理場・ドリンク",
+      "unit": "個",
+      "stock": 10,
+      "reserve": 0,
+      "needed": 10
+    },
+    {
+      "col": 94,
+      "name": "買い物かご (落とし物入れ)",
+      "category": "肉調理場・ドリンク",
+      "unit": "個",
+      "stock": 0,
+      "reserve": -2,
+      "needed": 2
+    },
+    {
+      "col": 95,
+      "name": "クローク用 もぎり券 (Ａ～Gレーン 1～1000番×2枚)",
+      "category": "肉調理場・ドリンク",
+      "unit": "枚",
+      "stock": 0,
+      "reserve": -1000,
+      "needed": 1000
+    },
+    {
+      "col": 96,
+      "name": "VIPお弁当箱",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -132,
+      "needed": 132
+    },
+    {
+      "col": 97,
+      "name": "トング",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -6,
+      "needed": 6
+    },
+    {
+      "col": 98,
+      "name": "トング（氷用）",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -4,
+      "needed": 4
+    },
+    {
+      "col": 99,
+      "name": "包丁",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -6,
+      "needed": 6
+    },
+    {
+      "col": 100,
+      "name": "包丁研ぎ",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -2,
+      "needed": 2
+    },
+    {
+      "col": 101,
+      "name": "まな板",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -3,
+      "needed": 3
+    },
+    {
+      "col": 102,
+      "name": "まな板シート",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -6,
+      "needed": 6
+    },
+    {
+      "col": 103,
+      "name": "キッチンバサミ",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -1,
+      "needed": 1
+    },
+    {
+      "col": 104,
+      "name": "アルミホイル",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -6,
+      "needed": 6
+    },
+    {
+      "col": 105,
+      "name": "バット",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -9,
+      "needed": 9
+    },
+    {
+      "col": 106,
+      "name": "クーラーボックス",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -4,
+      "needed": 4
+    },
+    {
+      "col": 107,
+      "name": "シンク用ホース",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -1,
+      "needed": 1
+    },
+    {
+      "col": 108,
+      "name": "洗剤",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -1,
+      "needed": 1
+    },
+    {
+      "col": 109,
+      "name": "スポンジ",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -5,
+      "needed": 5
+    },
+    {
+      "col": 110,
+      "name": "油かため",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -3,
+      "needed": 3
+    },
+    {
+      "col": 111,
+      "name": "キッチンペーパー",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -12,
+      "needed": 12
+    },
+    {
+      "col": 112,
+      "name": "三方囲い",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -6,
+      "needed": 6
+    },
+    {
+      "col": 113,
+      "name": "バケツ",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -3,
+      "needed": 3
+    },
+    {
+      "col": 114,
+      "name": "金たわし",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -3,
+      "needed": 3
+    },
+    {
+      "col": 115,
+      "name": "おぼん",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 3,
+      "reserve": -17,
+      "needed": 20
+    },
+    {
+      "col": 116,
+      "name": "VIPメニュー表",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -28,
+      "needed": 28
+    },
+    {
+      "col": 117,
+      "name": "プラカップ",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -900,
+      "needed": 900
+    },
+    {
+      "col": 118,
+      "name": "ストロー",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -100,
+      "needed": 100
+    },
+    {
+      "col": 119,
+      "name": "ガスコンロ",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 1,
+      "reserve": -3,
+      "needed": 4
+    },
+    {
+      "col": 120,
+      "name": "やかん",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -4,
+      "needed": 4
+    },
+    {
+      "col": 121,
+      "name": "シャンパン クーラー",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -4,
+      "needed": 4
+    },
+    {
+      "col": 122,
+      "name": "ゴムハンマー",
+      "category": "肉調理場・ドリンク",
+      "unit": "",
+      "stock": 0,
+      "reserve": -10,
+      "needed": 10
+    }
+  ],
+  "locations": [
+    {
+      "name": "エントランスゲート",
+      "quantities": {
+        "看板 (Ａ型)": 1,
+        "看板 (600角)": 5,
+        "看板 (ビスパネル 5400×900)": 1
+      }
+    },
+    {
+      "name": "入場口（看板）",
+      "quantities": {
+        "看板 (600角)": 1,
+        "看板 (ウッドラック 5400×1200)": 1
+      }
+    },
+    {
+      "name": "受付もぎり（関係者受付含む）&#10;※当日券もここで販売",
+      "quantities": {
+        "長テーブル (デコラ450)": 9,
+        "パイプ椅子": 10,
+        "テント (2間×3間)": 3,
+        "看板 (ウッドラック 1800×900)": 1,
+        "拡声器": 1,
+        "メモ": 2,
+        "ボールペン": 5,
+        "油性マジック 大・小（黒）": 1,
+        "油性マジック 大・小（赤）": 1,
+        "養生テープ": 2,
+        "ティッシュ": 1,
+        "タオル": 1,
+        "延長コード": 1,
+        "90Lゴミ袋": 2
+      }
+    },
+    {
+      "name": "クローク",
+      "quantities": {
+        "長テーブル (べニア600)": 73,
+        "パイプ椅子": 10,
+        "テント (2間×3間)": 6,
+        "メモ": 3,
+        "ボールペン": 6,
+        "油性マジック 大・小（黒）": 3,
+        "油性マジック 大・小（赤）": 3,
+        "養生テープ": 3,
+        "軍手": 4,
+        "45Lゴミ袋": 1000,
+        "90Lゴミ袋": 10
+      }
+    },
+    {
+      "name": "トイレ",
+      "quantities": {
+        "看板 (600角)": 4,
+        "看板 (600角 裏表)": 7,
+        "おもり (600角用)": 11,
+        "雑巾": 30,
+        "軍手": 10,
+        "ニトリル手袋 (使い捨て)": 100,
+        "芳香剤": 10,
+        "泡ハンドソープ": 7,
+        "トイレットペーパー": 72,
+        "サニタリーゴミ箱": 4,
+        "サニタリーゴミ袋": 100,
+        "トイレブラシ (清掃業者確認)": 3,
+        "スッポン (清掃業者確認)": 2,
+        "デッキブラシ (清掃業者確認)": 2,
+        "90Lゴミ袋": 10
+      }
+    },
+    {
+      "name": "ゴミステーション&#10;（道の駅ゴミ箱4つ）",
+      "quantities": {
+        "テント (2間×3間)": 4,
+        "看板 (ウッドラック 1800×900)": 3,
+        "養生テープ": 3,
+        "雑巾": 30,
+        "タオル": 30,
+        "軍手": 30,
+        "ニトリル手袋 (使い捨て)": 30,
+        "ゴミ運搬台車 (清掃業者確認)": 3,
+        "ゴミ箱 (可燃／プラスチック ペットボトル)": 19,
+        "汁物バケツ": 3,
+        "汁物ざる": 3,
+        "90Lゴミ袋": 600
+      }
+    },
+    {
+      "name": "キッチンカー",
+      "quantities": {
+        "パイプ椅子": 8,
+        "テント (2間×3間)": 1,
+        "養生テープ": 8,
+        "巻尺": 2,
+        "出店場所 Ａ４ (出店番号 屋号を記載)": 31
+      }
+    },
+    {
+      "name": "肉調理場",
+      "quantities": {
+        "長テーブル (べニア600)": 18,
+        "テント (2間×3間)": 1,
+        "メモ": 1,
+        "ボールペン": 1,
+        "油性マジック 大・小（黒）": 1,
+        "油性マジック 大・小（赤）": 1,
+        "布ガムテープ": 1,
+        "養生テープ": 1,
+        "ウェットティッシュ": 1,
+        "ティッシュ": 1,
+        "アルコール消毒 (手用)": 1,
+        "雑巾": 3,
+        "タオル": 4,
+        "軍手": 10,
+        "ニトリル手袋 (使い捨て)": 10
+      }
+    },
+    {
+      "name": "インフォメーション",
+      "quantities": {
+        "長テーブル (デコラ450)": 2,
+        "パイプ椅子": 4,
+        "テント (2間×3間)": 1,
+        "看板 (ウッドラック 1800×900)": 1,
+        "メモ": 1,
+        "ボールペン": 2,
+        "油性マジック 大・小（黒）": 3,
+        "油性マジック 大・小（赤）": 3,
+        "布ガムテープ": 5,
+        "養生テープ": 5,
+        "ウェットティッシュ": 1,
+        "ティッシュ": 1,
+        "アルコール消毒 (手用)": 1,
+        "雑巾": 10,
+        "タオル": 5,
+        "延長コード": 1,
+        "警備棒 (念のため)": 3,
+        "90Lゴミ袋": 2
+      }
+    },
+    {
+      "name": "喫煙所",
+      "quantities": {
+        "長テーブル (デコラ450)": 1,
+        "パイプ椅子": 2,
+        "テント (2間×3間)": 3
+      }
+    },
+    {
+      "name": "授乳・オムツ",
+      "quantities": {
+        "長テーブル (デコラ450)": 2,
+        "パイプ椅子": 6,
+        "テント (2間×3間)": 1,
+        "看板 (ウッドラック 1800×900)": 1,
+        "スポットクーラー": 1,
+        "ウェットティッシュ": 2,
+        "ティッシュ": 2,
+        "アルコール消毒 (手用)": 1,
+        "延長コード": 1,
+        "ゴミ箱 (可燃／プラスチック ペットボトル)": 2,
+        "90Lゴミ袋": 30
+      }
+    },
+    {
+      "name": "救護",
+      "quantities": {
+        "長テーブル (デコラ450)": 2,
+        "パイプ椅子": 6,
+        "テント (2間×3間)": 1,
+        "看板 (ウッドラック 1800×900)": 1,
+        "スポットクーラー": 1,
+        "メモ": 1,
+        "ボールペン": 2,
+        "ウェットティッシュ": 1,
+        "ティッシュ": 1,
+        "アルコール消毒 (手用)": 2,
+        "タオル": 20,
+        "軍手": 5,
+        "ニトリル手袋 (使い捨て)": 100,
+        "救護セット": 1,
+        "90Lゴミ袋": 10
+      }
+    },
+    {
+      "name": "エブリライブ",
+      "quantities": {
+        "長テーブル (べニア600)": 4,
+        "長テーブル (デコラ450)": 2,
+        "パイプ椅子": 9,
+        "テント (2間×3間)": 1
+      }
+    },
+    {
+      "name": "運営控え",
+      "quantities": {
+        "パイプ椅子": 150,
+        "テント (2間×3間)": 4,
+        "テント (2間×2間)": 2,
+        "扇風機": 2,
+        "ウェットティッシュ": 3,
+        "ティッシュ": 3,
+        "アルコール消毒 (手用)": 2
+      }
+    },
+    {
+      "name": "演者控え",
+      "quantities": {
+        "長テーブル (デコラ450)": 6,
+        "パイプ椅子": 20,
+        "ウェットティッシュ": 3,
+        "ティッシュ": 3,
+        "アルコール消毒 (手用)": 2,
+        "延長コード": 1
+      }
+    },
+    {
+      "name": "制作本部",
+      "quantities": {
+        "長テーブル (デコラ450)": 8,
+        "パイプ椅子": 16,
+        "テント (2間×3間)": 2,
+        "扇風機": 2,
+        "布ガムテープ": 10,
+        "養生テープ": 10,
+        "ウェットティッシュ": 3,
+        "ティッシュ": 3,
+        "アルコール消毒 (手用)": 2,
+        "雑巾": 10,
+        "タオル": 10,
+        "軍手": 30,
+        "ニトリル手袋 (設営とか用)": 12,
+        "延長コード": 2
+      }
+    },
+    {
+      "name": "PA",
+      "quantities": {
+        "長テーブル (べニア600)": 8,
+        "パイプ椅子": 16,
+        "テント (2間×3間)": 2
+      }
+    },
+    {
+      "name": "ステージ",
+      "quantities": {}
+    },
+    {
+      "name": "合唱参加者席",
+      "quantities": {
+        "長椅子３人掛け": 220
+      }
+    },
+    {
+      "name": "合唱・ダンス保護者席&#10;※雨の場合シート敷く",
+      "quantities": {
+        "パイプ椅子": 440,
+        "看板 (600角)": 1,
+        "おもり (600角用)": 1
+      }
+    },
+    {
+      "name": "VIP・PRM席",
+      "quantities": {
+        "長テーブル (デコラ450)": 4,
+        "看板 (600角)": 4,
+        "おもり (600角用)": 4,
+        "平台": 2,
+        "カーペット ワインレッド NJ-34": 4,
+        "消火器": 1,
+        "メモ": 20,
+        "ボールペン": 20,
+        "養生テープ": 3,
+        "アルコール消毒 (手用)": 7,
+        "雑巾": 20,
+        "タオル": 50,
+        "軍手": 20,
+        "ニトリル手袋 (使い捨て)": 60,
+        "ゴミ箱 (可燃／プラスチック ペットボトル)": 5,
+        "VIP弁当": 132,
+        "VIP椅子": 36,
+        "VIP机": 36,
+        "PRM椅子": 96,
+        "PRM机": 24
+      }
+    },
+    {
+      "name": "LIVEスタンド席",
+      "quantities": {
+        "パイプ椅子": 1006,
+        "看板 (600角 裏表)": 1,
+        "おもり (600角用)": 1
+      }
+    },
+    {
+      "name": "Aブロック",
+      "quantities": {
+        "パイプ椅子": 3480,
+        "看板 (600角)": 4,
+        "おもり (600角用)": 4
+      }
+    },
+    {
+      "name": "Bブロック",
+      "quantities": {
+        "パイプ椅子": 2465,
+        "看板 (600角)": 4,
+        "おもり (600角用)": 4
+      }
+    },
+    {
+      "name": "Cブロック",
+      "quantities": {
+        "パイプ椅子": 2389,
+        "看板 (600角)": 4,
+        "おもり (600角用)": 4
+      }
+    },
+    {
+      "name": "車椅子エリア",
+      "quantities": {
+        "パイプ椅子": 28,
+        "看板 (600角)": 1,
+        "おもり (600角用)": 1
+      }
+    },
+    {
+      "name": "フォトグラファーエリア",
+      "quantities": {
+        "パイプ椅子": 35,
+        "看板 (600角)": 1,
+        "おもり (600角用)": 1
+      }
+    },
+    {
+      "name": "肉調理場・ドリンク（必要数）",
+      "quantities": {
+        "チケット半券用 BOX (受付用)": 10,
+        "買い物かご (落とし物入れ)": 2,
+        "クローク用 もぎり券 (Ａ～Gレーン 1～1000番×2枚)": 1000,
+        "VIPお弁当箱": 132,
+        "トング": 6,
+        "トング（氷用）": 4,
+        "包丁": 6,
+        "包丁研ぎ": 2,
+        "まな板": 3,
+        "まな板シート": 6,
+        "キッチンバサミ": 1,
+        "アルミホイル": 6,
+        "バット": 9,
+        "クーラーボックス": 4,
+        "シンク用ホース": 1,
+        "洗剤": 1,
+        "スポンジ": 5,
+        "油かため": 3,
+        "キッチンペーパー": 12,
+        "三方囲い": 6,
+        "バケツ": 3,
+        "金たわし": 3,
+        "おぼん": 20,
+        "VIPメニュー表": 28,
+        "プラカップ": 900,
+        "ストロー": 100,
+        "ガスコンロ": 4,
+        "やかん": 4,
+        "シャンパン クーラー": 4,
+        "ゴムハンマー": 10
+      }
+    },
+    {
+      "name": "その他備品（VIP・ステーキ等）",
+      "quantities": {
+        "簡易ベッド": 2,
+        "ステーキ鉄板 （ヘラ付き）": 6,
+        "氷": 2,
+        "サーバー": 1,
+        "VIPドリンク類": 1,
+        "ステーキ肉 ヒレ": 1,
+        "ステーキ肉 サーロイン": 1,
+        "VIP弁当": 3,
+        "VIP椅子": 3,
+        "PRM椅子": 4
+      }
+    }
+  ]
+};
+
+// --- Utility ---
+function displayName(name) {
+  return name.replace(/&#10;/g, '<br>');
+}
+
+function displayNamePlain(name) {
+  return name.replace(/&#10;/g, ' ');
+}
+
+// --- State ---
+let allData = DATA;
+let currentView = 'table';
+let searchTerm = '';
+let activeCategory = null;
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchTerm = e.target.value.toLowerCase();
+  render();
+});
+
+function switchView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-toggle button').forEach(b =>
+    b.classList.toggle('active', b.dataset.view === v)
+  );
+  render();
+}
+
+function setCategory(cat) {
+  activeCategory = cat;
+  render();
+}
+
+function qc(v) {
+  if (v < 0) return 'q-neg';
+  if (v === 0) return 'q-zero';
+  if (v <= 3) return 'q-low';
+  if (v <= 10) return 'q-mid';
+  return 'q-hi';
+}
+
+function filteredItems() {
+  let its = allData.items;
+  if (activeCategory) its = its.filter(i => i.category === activeCategory);
+  if (searchTerm) its = its.filter(i => i.name.toLowerCase().includes(searchTerm) || i.category.toLowerCase().includes(searchTerm));
+  return its;
+}
+
+function filteredLocations() {
+  const its = filteredItems();
+  const names = new Set(its.map(i => i.name));
+  let locs = allData.locations;
+  if (searchTerm) {
+    locs = locs.filter(l =>
+      l.name.toLowerCase().includes(searchTerm) ||
+      Object.keys(l.quantities).some(q => q.toLowerCase().includes(searchTerm))
+    );
+  }
+  return { locs, its, names };
+}
+
+function render() {
+  if (!allData) return;
+  renderSummary();
+  renderChips();
+  if (currentView === 'table') renderTable();
+  else if (currentView === 'cards') renderCards();
+  else renderReserve();
+}
+
+function renderSummary() {
+  const { items, locations } = allData;
+  const neg = items.filter(i => i.reserve < 0).length;
+  document.getElementById('summaryCards').innerHTML = `
+    <div class="summary-card info"><div class="label">備品アイテム数</div><div class="value">${items.length}</div><div class="sub">全カテゴリ合計</div></div>
+    <div class="summary-card ok"><div class="label">配置場所</div><div class="value">${locations.length}</div><div class="sub">箇所</div></div>
+    <div class="summary-card ${neg > 0 ? 'danger' : 'ok'}"><div class="label">不足アイテム</div><div class="value">${neg}</div><div class="sub">${neg > 0 ? '予備がマイナス' : '問題なし'}</div></div>
+    <div class="summary-card info"><div class="label">カテゴリ数</div><div class="value">${new Set(items.map(i => i.category)).size}</div><div class="sub">グループ</div></div>
+  `;
+}
+
+function renderChips() {
+  const cats = [...new Set(allData.items.map(i => i.category))];
+  document.getElementById('filterChips').innerHTML =
+    `<span class="chip ${!activeCategory ? 'active' : ''}" onclick="setCategory(null)">すべて</span>` +
+    cats.map(c => `<span class="chip ${activeCategory === c ? 'active' : ''}" onclick="setCategory('${c.replace(/'/g, "\\'")}')">${c}</span>`).join('');
+}
+
+function renderTable() {
+  const { locs, its } = filteredLocations();
+  let h = `<div class="table-container"><table><thead><tr><th style="position:sticky;left:0;top:0;z-index:4;background:var(--surface2);text-align:left">場所</th>`;
+  for (const i of its) {
+    h += `<th title="${i.category}">${i.name}${i.unit ? '<br><small style="color:var(--text-muted);font-weight:400">' + i.unit + '</small>' : ''}</th>`;
+  }
+  h += `</tr></thead><tbody>`;
+  for (const loc of locs) {
+    h += `<tr><td class="loc-name">${displayName(loc.name)}</td>`;
+    for (const i of its) {
+      const v = loc.quantities[i.name] || 0;
+      h += v === 0
+        ? `<td><span class="q-zero">-</span></td>`
+        : `<td><span class="qty ${qc(v)}">${v}</span></td>`;
+    }
+    h += `</tr>`;
+  }
+  // Reserve row
+  h += `<tr style="border-top:2px solid var(--border);background:rgba(251,191,36,0.05)"><td class="loc-name" style="color:var(--yellow)">予備</td>`;
+  for (const i of its) {
+    const r = i.reserve;
+    h += `<td><span class="qty ${r < 0 ? 'q-neg' : r > 0 ? 'q-hi' : 'q-zero'}">${r || '-'}</span></td>`;
+  }
+  h += `</tr>`;
+  // Stock row
+  h += `<tr style="background:rgba(56,189,248,0.05)"><td class="loc-name" style="color:var(--accent)">在庫</td>`;
+  for (const i of its) {
+    h += `<td><span class="qty ${i.stock > 0 ? 'q-hi' : 'q-zero'}">${i.stock || '-'}</span></td>`;
+  }
+  h += `</tr></tbody></table></div>`;
+  document.getElementById('content').innerHTML = h;
+}
+
+function renderCards() {
+  const { locs, its, names } = filteredLocations();
+  let h = '<div class="card-grid">';
+  for (const loc of locs) {
+    const entries = Object.entries(loc.quantities).filter(([n]) => names.has(n)).sort((a, b) => b[1] - a[1]);
+    if (entries.length === 0) continue;
+    const unitOf = n => { const f = allData.items.find(i => i.name === n); return f ? f.unit : ''; };
+    h += `<div class="loc-card"><div class="loc-card-head"><h3>${displayNamePlain(loc.name)}</h3><span class="cnt">${entries.length} アイテム</span></div><div class="loc-card-body">`;
+    for (const [n, v] of entries) {
+      h += `<div class="item-row"><span class="item-name">${n}</span><span class="item-qty ${qc(v)}">${v} ${unitOf(n)}</span></div>`;
+    }
+    h += `</div></div>`;
+  }
+  h += '</div>';
+  document.getElementById('content').innerHTML = h;
+}
+
+function renderReserve() {
+  const its = filteredItems();
+  const neg = its.filter(i => i.reserve < 0).sort((a, b) => a.reserve - b.reserve);
+  const pos = its.filter(i => i.reserve > 0).sort((a, b) => b.reserve - a.reserve);
+  const zero = its.filter(i => i.reserve === 0);
+
+  let h = '';
+  if (neg.length) {
+    h += `<div class="section-title" style="color:var(--red)">不足アイテム (${neg.length}件)</div><div class="reserve-grid">`;
+    for (const i of neg) h += `<div class="reserve-item neg"><div><div class="rname">${i.name}</div><div class="rsub">${i.category} / 在庫: ${i.stock}${i.unit}</div></div><div class="rqty" style="color:var(--red)">${i.reserve} ${i.unit}</div></div>`;
+    h += `</div>`;
+  }
+  if (pos.length) {
+    h += `<div class="section-title" style="color:var(--green)">余裕あり (${pos.length}件)</div><div class="reserve-grid">`;
+    for (const i of pos) h += `<div class="reserve-item pos"><div><div class="rname">${i.name}</div><div class="rsub">${i.category} / 在庫: ${i.stock}${i.unit}</div></div><div class="rqty" style="color:var(--green)">+${i.reserve} ${i.unit}</div></div>`;
+    h += `</div>`;
+  }
+  if (zero.length) {
+    h += `<div class="section-title" style="color:var(--text-muted)">予備なし (${zero.length}件)</div><div class="reserve-grid">`;
+    for (const i of zero) h += `<div class="reserve-item"><div><div class="rname">${i.name}</div><div class="rsub">${i.category} / 在庫: ${i.stock}${i.unit}</div></div><div class="rqty" style="color:var(--text-muted)">0</div></div>`;
+    h += `</div>`;
+  }
+  document.getElementById('content').innerHTML = h;
+}
+
+// Initialize
+document.getElementById('lastUpdate').textContent = `埋め込みデータ`;
+render();
+</script>
+</body>
+</html>
