@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>備品管理ビューア - ロズウェル</title>
+  <title>シンフォニックスターマイン備品管理</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -50,6 +50,12 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+    .nav-link {
+      padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+      background: var(--surface2); color: var(--text-muted); text-decoration: none;
+      border: 1px solid var(--border); transition: all 0.2s;
+    }
+    .nav-link:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     .header-meta {
       display: flex;
       align-items: center;
@@ -289,7 +295,8 @@
 <body>
 <div class="header">
   <div class="header-content">
-    <h1>備品管理ビューア - ロズウェル</h1>
+    <h1>シンフォニックスターマイン備品管理</h1>
+    <a class="nav-link" href="drive.html">イベントデータ管理へ</a>
     <div class="header-meta">
       <span><span class="status-dot"></span>データ読込済</span>
       <span id="lastUpdate"></span>
